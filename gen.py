@@ -58,7 +58,7 @@ static usize hashtable_size = %d;
 
 for w in tokens:
     f.write("""static TokenData %s = {
-\t.str= str("%s"),
+\t.str = str("%s"),
 \t.tok_type = %s
 };
 """ % (w[1], w[0], w[1].upper()))

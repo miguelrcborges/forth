@@ -15,17 +15,17 @@ Lex Lex_create(string src) {
 
 Token Lex_next(Lex *l) {
 	Token t;
+	while (l->pos < l->src.len && ignore[l->src.str[l->pos]]) {
+		l->pos += 1;
+	}
+
 	if (l->pos >= l->src.len) {
 		t.type = EOF;
 		return t;
 	}
 
-	while (ignore[l->src.str[l->pos]]) {
-		l->pos += 1;
-	}
-
 	if (l->src.str[l->pos] >= '0' && l->src.str[l->pos] <= '9') {
-		t.type = NUMBERS;
+		t.type = NUMBER;
 		t.number = 0;
 		do {
 			t.number *= 10;
@@ -39,18 +39,19 @@ Token Lex_next(Lex *l) {
 		t.type = STRING;
 		l->pos += 1;
 		u32 s = l->pos;
-		while (l->pos < l->src.len && l->src.str[l->pos] == '\"') {
+		while (l->pos < l->src.len && l->src.str[l->pos] != '\"') {
 			l->pos += 1;
 		}
 		t.s.str = l->src.str + s;
 		t.s.len = l->pos - s;
+		l->pos += 1;
 		return t;
 	}
 
 	string instr;
 	u32 s = l->pos;
 	l->pos += 1;
-	while (l->pos < l->src.len && ignore[l->src.str[l->pos]]) {
+	while (l->pos < l->src.len && !ignore[l->src.str[l->pos]]) {
 		l->pos += 1;
 	}
 	instr.str = l->src.str + s;

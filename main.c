@@ -1,11 +1,13 @@
 #include "c.h"
 
+Arena a;
+
 #ifdef _WIN32
 int mainCRTStartup(void) {
 #else
 int main(void) {
 #endif
-	Arena a = Arena_create(0);
+	a = Arena_create(0);
 	string src = io_readFile(&a, str("src.bf"));
 	Lex l = Lex_create(src);
 	Token t;

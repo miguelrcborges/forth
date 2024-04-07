@@ -3,7 +3,7 @@
 enum TokenType {
 	EOF,
 	INVALID,
-	NUMBERS,
+	NUMBER,
 	STRING,
 	ADD,
 	SUB,
@@ -31,6 +31,9 @@ typedef struct {
 	u32 pos;
 } Lex;
 
+
+/* main.c */
+extern Arena a;
 
 /* lex.c */
 Lex Lex_create(string src);
