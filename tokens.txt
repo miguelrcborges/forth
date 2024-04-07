@@ -1,0 +1,11 @@
+// Token Function
++ add
+- sub
+* mul
+/ div
+swap swap
+rot rot
+pop pop
+dup dup
+drop drop
+nip nip
