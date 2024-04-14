@@ -1,19 +1,21 @@
 #include "c.h"
 
-Arena a;
-
 #ifdef _WIN32
 int mainCRTStartup(void) {
 #else
 int main(void) {
 #endif
-	a = Arena_create(0);
-	string src = io_readFile(&a, str("src.bf"));
+	usize fd = io_open(str("src.bf"), IO_READ);
+	usize len = io_len(fd);
+	string src;
+	src.str = mem_rescommit(len);
+	src.len = len;
+	io_read(fd, (u8 *)src.str, src.len);
+	io_close(fd);
 	Lex l = Lex_create(src);
-	Token t;
-	while ((t = Lex_next(&l)).type) {
-		VM_execute(t);
-	}
-
+	Bytecode *bytes = Compiler_compile(&l);
+	mem_release((void *)src.str, src.len);
+	VM_run(bytes);
+	// let leak because program will end lol
 	return 0;
 }

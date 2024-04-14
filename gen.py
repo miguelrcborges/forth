@@ -90,7 +90,9 @@ u8 Map_getTokenType(string tok) {
 \tif (hashtable[h] && string_equal(tok, hashtable[h]->str)) {
 \t\treturn hashtable[h]->tok_type;
 \t}
-\treturn INVALID;
+\tio_write(getStdErr(), str("Invalid token found. Exiting.\\n"));
+\tdie(2);
+\t__builtin_unreachable();
 }
 """ % (offset, coef))
 

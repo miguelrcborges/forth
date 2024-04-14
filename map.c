@@ -8,43 +8,43 @@ typedef struct {
 static usize hashtable_size = 32;
 
 static TokenData add = {
-	.str= str("+"),
+	.str = str("+"),
 	.tok_type = ADD
 };
 static TokenData sub = {
-	.str= str("-"),
+	.str = str("-"),
 	.tok_type = SUB
 };
 static TokenData mul = {
-	.str= str("*"),
+	.str = str("*"),
 	.tok_type = MUL
 };
 static TokenData div = {
-	.str= str("/"),
+	.str = str("/"),
 	.tok_type = DIV
 };
 static TokenData swap = {
-	.str= str("swap"),
+	.str = str("swap"),
 	.tok_type = SWAP
 };
 static TokenData rot = {
-	.str= str("rot"),
+	.str = str("rot"),
 	.tok_type = ROT
 };
 static TokenData pop = {
-	.str= str("pop"),
+	.str = str("pop"),
 	.tok_type = POP
 };
 static TokenData dup = {
-	.str= str("dup"),
+	.str = str("dup"),
 	.tok_type = DUP
 };
 static TokenData drop = {
-	.str= str("drop"),
+	.str = str("drop"),
 	.tok_type = DROP
 };
 static TokenData nip = {
-	.str= str("nip"),
+	.str = str("nip"),
 	.tok_type = NIP
 };
 
@@ -97,5 +97,7 @@ u8 Map_getTokenType(string tok) {
 	if (hashtable[h] && string_equal(tok, hashtable[h]->str)) {
 		return hashtable[h]->tok_type;
 	}
-	return INVALID;
+	io_write(getStdErr(), str("Invalid token found. Exiting.\n"));
+	die(2);
+	__builtin_unreachable();
 }

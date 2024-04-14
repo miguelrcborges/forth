@@ -1,41 +1,150 @@
 #include "c.h"
 
-static u32 stack[1 << 16];
+static i32 stack[1 << 16];
 static u32 stack_pos = 0;
+static u32 instr_pos = 0;
 
 static void checkElements(u32 n);
-static void invalid(Token t);
-static void number(Token t);
-static void stringf(Token t);
-static void add(Token t);
-static void sub(Token t);
-static void mul(Token t);
-static void div(Token t);
-static void swap(Token t);
-static void pop(Token t);
-static void dup(Token t);
-static void drop(Token t);
-static void nip(Token t);
-static void rot(Token t);
 
-void (*instrTable[TOKENTYPE_COUNT])(Token) = {
-	[INVALID] = invalid,
-	[NUMBER] = number,
-	[STRING] = stringf,
-	[ADD] = add,
-	[SUB] = sub,
-	[MUL] = mul,
-	[DIV] = div,
-	[SWAP] = swap,
-	[POP] = pop,
-	[DUP] = dup,
-	[DROP] = drop,
-	[NIP] = nip,
-	[ROT] = rot
-};
-
-void VM_execute(Token t) {
-	instrTable[t.type](t);
+void VM_run(Bytecode *bytes) {
+	for (;;) {
+		Bytecode b = bytes[instr_pos];
+		u8 instr = b.instr & 0b00111111;
+		switch (instr) {
+			case EOF: {
+				goto end;
+			}
+			case ADD: {
+				checkElements(2);
+				stack_pos -= 1;
+				stack[stack_pos-1] = stack[stack_pos-1]+stack[stack_pos];
+				instr_pos += 1;
+				break;
+			}
+			case SUB: {
+				checkElements(2);
+				stack_pos -= 1;
+				stack[stack_pos-1] = stack[stack_pos-1]-stack[stack_pos];
+				instr_pos += 1;
+				break;
+			}
+			case MUL: {
+				checkElements(2);
+				stack_pos -= 1;
+				stack[stack_pos-1] = stack[stack_pos-1]*stack[stack_pos];
+				instr_pos += 1;
+				break;
+			}
+			case DIV: {
+				checkElements(2);
+				stack_pos -= 1;
+				stack[stack_pos-1] = stack[stack_pos-1]/stack[stack_pos];
+				instr_pos += 1;
+				break;
+			}
+			case SWAP: {
+				checkElements(2);
+				u32 i = stack_pos - 1;
+				u32 tmp = stack[i];
+				stack[i] = stack[i-1];
+				stack[i-1] = tmp;
+				instr_pos += 1;
+				break;
+			}
+			case POP: {
+				u8 writeBuffer[12] = {
+					[sizeof(writeBuffer)-1] = '\n'
+				};
+				checkElements(1);
+				u8 *w = writeBuffer + (sizeof(writeBuffer) - 2);
+				stack_pos -= 1;
+				i32 num = stack[stack_pos];
+				u32 unum = num >= 0 ? num : -num;
+				do {
+					*w = unum % 10 + '0';
+					unum /= 10;
+					w -= 1;
+				} while (unum > 0);
+				if (num < 0) {
+					*w = '-';
+					w -= 1;
+				}
+				string s;
+				s.str = (const u8 *)w + 1;
+				s.len = (writeBuffer + (sizeof(writeBuffer) - 1)) - w;
+				io_write(getStdOut(), s);
+				instr_pos += 1;
+				break;
+			}
+			case DUP: {
+				checkElements(1);
+				stack[stack_pos] = stack[stack_pos-1];
+				stack_pos += 1;
+				instr_pos += 1;
+				break;
+			}
+			case DROP: {
+				checkElements(1);
+				stack_pos -= 1;
+				instr_pos += 1;
+				break;
+			}
+			case NIP: {
+				checkElements(2);
+				stack_pos -= 1;
+				stack[stack_pos-1] = stack[stack_pos];
+				instr_pos += 1;
+				break;
+			}
+			case ROT: {
+				u32 i = stack_pos - 1;
+				u32 second = stack[i];
+				u32 first = stack[i-1];
+				u32 third = stack[i-2];
+				stack[i-2] = first;
+				stack[i-1] = second;
+				stack[i] = third;
+				instr_pos += 1;
+				break;
+			}
+			case NUMBER: {
+				u8 n_bytes = (0b11000000 & b.instr) >> 6;
+				u32 number = 0;
+				do {
+					instr_pos += 1;
+					number <<= 8;
+					number |= (u32) (bytes[instr_pos].instr);
+				} while (n_bytes --> 0);
+				stack[stack_pos] = number;
+				stack_pos += 1;
+				instr_pos += 1;
+				break;
+			}
+			case STRING: {
+				u8 n_bytes = (0b11000000 & b.instr) >> 6;
+				string s = {0};
+				do {
+					instr_pos += 1;
+					s.len <<= 8;
+					s.len |= (u32) (bytes[instr_pos].instr);
+				} while (n_bytes --> 0);
+				instr_pos += 1;
+				s.str = &(bytes[instr_pos].instr);
+				usize stdout = getStdOut();
+				io_write(stdout, s);
+				io_write(stdout, str("\n"));
+				instr_pos += s.len;
+				break;
+			}
+			default: {
+				io_write(getStdErr(), str("Invalid instruction found. Exiting.\n"));
+				die(2);
+				__builtin_unreachable();
+			}
+		}
+	}
+end:
+	return;
 }
 
 static void checkElements(u32 n) {
@@ -44,91 +153,4 @@ static void checkElements(u32 n) {
 		io_write(getStdErr(), str("Not enough stack elements for the executing operation. Exiting.\n"));
 		die(1);
 	}
-}
-
-static void invalid(Token t) {
-	io_write(getStdErr(), str("Invalid token found. Exiting.\n"));
-	die(1);
-}
-
-static void number(Token t) {
-	stack[stack_pos] = t.number;
-	stack_pos += 1;
-}
-
-static void stringf(Token t) {
-	ArenaState as = Arena_saveState(&a);
-	string conc = string_build(&a, t.s, str("\n"));
-	io_write(getStdOut(), conc);
-	Arena_rollback(as);
-}
-
-static void add(Token t) {
-	checkElements(2);
-	stack_pos -= 1;
-	stack[stack_pos-1] = stack[stack_pos-1]+stack[stack_pos];
-}
-
-static void sub(Token t) {
-	checkElements(2);
-	stack_pos -= 1;
-	stack[stack_pos-1] = stack[stack_pos-1]-stack[stack_pos];
-}
-
-static void mul(Token t) {
-	checkElements(2);
-	stack_pos -= 1;
-	stack[stack_pos-1] = stack[stack_pos-1]*stack[stack_pos];
-}
-
-static void div(Token t) {
-	checkElements(2);
-	stack_pos -= 1;
-	stack[stack_pos-1] = stack[stack_pos-1]/stack[stack_pos];
-}
-
-static void swap(Token t) {
-	checkElements(2);
-	u32 i = stack_pos - 1;
-	u32 tmp = stack[i];
-	stack[i] = stack[i-1];
-	stack[i-1] = tmp;
-}
-
-static void pop(Token t) {
-	checkElements(1);
-	stack_pos -= 1;
-	u32 num = stack[stack_pos];
-	ArenaState as = Arena_saveState(&a);
-	string s = string_fmtu64(&a, num);
-	string conc = string_build(&a, s, str("\n"));
-	io_write(getStdOut(), conc);
-	Arena_rollback(as);
-}
-
-static void dup(Token t) {
-	checkElements(1);
-	stack[stack_pos] = stack[stack_pos-1];
-	stack_pos += 1;
-}
-
-static void drop(Token t) {
-	checkElements(1);
-	stack_pos -= 1;
-}
-
-static void nip(Token t) {
-	checkElements(2);
-	stack_pos -= 1;
-	stack[stack_pos-1] = stack[stack_pos];
-}
-
-static void rot(Token t) {
-	u32 i = stack_pos - 1;
-	u32 second = stack[i];
-	u32 first = stack[i-1];
-	u32 third = stack[i-2];
-	stack[i-2] = first;
-	stack[i-1] = second;
-	stack[i] = third;
 }
