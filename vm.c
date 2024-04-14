@@ -97,6 +97,7 @@ void VM_run(Bytecode *bytes) {
 				break;
 			}
 			case ROT: {
+				checkElements(3);
 				u32 i = stack_pos - 1;
 				u32 second = stack[i];
 				u32 first = stack[i-1];
