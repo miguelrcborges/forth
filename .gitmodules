@@ -1,0 +1,3 @@
+[submodule "thirdparty/lib"]
+	path = thirdparty/lib
+	url = https://github.com/miguelrcborges/lib

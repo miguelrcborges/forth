@@ -47,26 +47,44 @@ static TokenData nip = {
 	.str = str("nip"),
 	.tok_type = NIP
 };
+static TokenData token_if = {
+	.str = str("if"),
+	.tok_type = TOKEN_IF
+};
+static TokenData token_else = {
+	.str = str("else"),
+	.tok_type = TOKEN_ELSE
+};
+static TokenData token_done = {
+	.str = str("done"),
+	.tok_type = TOKEN_DONE
+};
 
 static TokenData *hashtable[] = {
+	&nip,
 	NULL,
-	NULL,
-	NULL,
-	NULL,
-	&dup,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
+	&rot,
 	NULL,
 	&drop,
 	NULL,
 	NULL,
 	NULL,
 	&swap,
+	NULL,
+	&dup,
+	NULL,
+	NULL,
+	NULL,
+	&token_else,
+	NULL,
+	NULL,
+	NULL,
+	&token_if,
+	NULL,
+	NULL,
 	&mul,
 	&add,
-	NULL,
+	&token_done,
 	&sub,
 	NULL,
 	&div,
@@ -74,17 +92,11 @@ static TokenData *hashtable[] = {
 	&pop,
 	NULL,
 	NULL,
-	NULL,
-	&nip,
-	NULL,
-	&rot,
-	NULL,
-	NULL,
 	NULL
 };
 
 static u16 hash(string s) {
-	u16 h = 27;
+	u16 h = 21;
 	for (usize i = 0; i < s.len; ++i) {
 		h = h * 31 + s.str[i];
 	}

@@ -3,6 +3,8 @@
 static i32 stack[1 << 16];
 static u32 stack_pos = 0;
 static u32 instr_pos = 0;
+static u8 if_stack[1 << 8];
+static u8 if_pos = 0;
 
 static void checkElements(u32 n);
 
@@ -135,6 +137,33 @@ void VM_run(Bytecode *bytes) {
 				io_write(stdout, s);
 				io_write(stdout, str("\n"));
 				instr_pos += s.len;
+				break;
+			}
+			case JUMP: {
+				u8 n_bytes = (0b11000000 & b.instr) >> 6;
+				u32 number = 0;
+				do {
+					instr_pos += 1;
+					number <<= 8;
+					number |= (u32) (bytes[instr_pos].instr);
+				} while (n_bytes --> 0);
+				instr_pos = number;
+				break;
+			}
+			case JUMPIFNOT: {
+				u8 n_bytes = (0b11000000 & b.instr) >> 6;
+				u32 number = 0;
+				stack_pos -= 1;
+				if (stack[stack_pos]) {
+					instr_pos += n_bytes + 2;
+					break;
+				}
+				do {
+					instr_pos += 1;
+					number <<= 8;
+					number |= (u32) (bytes[instr_pos].instr);
+				} while (n_bytes --> 0);
+				instr_pos = number;
 				break;
 			}
 			default: {

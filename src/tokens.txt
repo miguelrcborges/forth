@@ -9,3 +9,6 @@ pop pop
 dup dup
 drop drop
 nip nip
+if token_if
+else token_else
+done token_done

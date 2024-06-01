@@ -1,8 +1,17 @@
 #include "c.h"
 
+#include "map.c"
+#include "lex.c"
+#include "comp.c"
+#include "vm.c"
+
 #ifdef _WIN32
+#include "win32.c"
+
 int mainCRTStartup(void) {
 #else
+#include "x86_64-linux.c"
+
 int main(void) {
 #endif
 	usize fd = io_open(str("src.bf"), IO_READ);

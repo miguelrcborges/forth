@@ -1,3 +1,6 @@
+#ifndef C_H
+#define C_H
+
 #include "lib.h"
 
 enum TokenType {
@@ -19,7 +22,19 @@ enum TokenType {
 	NUMBER,
 	STRING,
 
+/* NOT INSTRUCTIONS */
+	TOKEN_IF,
+	TOKEN_ELSE,
+	TOKEN_DONE,
+
 	TOKENTYPE_COUNT,
+};
+
+enum Instructions {
+	LAST_INSTRUCTION = STRING,
+
+	JUMP,
+	JUMPIFNOT,
 };
 
 typedef struct {
@@ -45,7 +60,11 @@ typedef struct {
  * The instructions that parse a number are:
  *     - string: the following number is the length of the string
  *     - number: the number to parse
+ *     - jump: the address to jump 
+ *     - jumpifnot: the address to jump to
  *
+ * Number values are little endian
+ * 
  * For the sake of simplicity, the instruction code will be the same as the token value.
  * (for now, stuff like ifs and elses will need to be different)
  */
@@ -66,7 +85,6 @@ void Compiler_free(void);
 u8 Map_getTokenType(string token);
 
 /* vm.c */
-/**
- * @return Pointer to last bytecode instruction.
- */
 void VM_run(Bytecode *bytes);
+
+#endif /* C_H */

@@ -7,6 +7,11 @@ static u8 *commited;
 static u8 *end;
 static usize pageSize;
 
+static struct {
+	u8 *cache;
+} ifstack[1 << 8];
+static u8 ifstack_pos;
+
 static void insertByte(u8 byte);
 
 void Compiler_free(void) {
@@ -47,8 +52,7 @@ Bytecode *Compiler_compile(Lex *l) {
 				}
 				insertByte(NUMBER | (n_bytes << 6));
 				do {
-					insertByte(t.number);
-					t.number >>= 8;
+					insertByte(t.number >> (n_bytes * 8));
 				} while (n_bytes --> 0);
 				break;
 			}
@@ -63,12 +67,58 @@ Bytecode *Compiler_compile(Lex *l) {
 				insertByte(STRING | (n_bytes << 6));
 				tmp_num = t.s.len;
 				do {
-					insertByte(tmp_num);
-					tmp_num >>= 8;
+					insertByte(tmp_num >> (n_bytes * 8));
 				} while (n_bytes --> 0);
 				for (usize i = 0; i < t.s.len; ++i) {
 					insertByte(t.s.str[i]);
 				}
+				break;
+			}
+			case TOKEN_IF: {
+				// TODO: A better if system that uses variable number size
+				insertByte(JUMPIFNOT | (0b11 << 6));
+				ifstack[ifstack_pos].cache = offset;
+				for (usize i = 0; i < 4; ++i) {
+					insertByte(0);
+				}
+				ifstack_pos += 1;
+				break;
+			}
+			case TOKEN_ELSE: {
+				if (ifstack_pos == 0) {
+					io_write(getStdErr(), str("Else without an if found. Exiting.\n"));
+					die(2);
+					__builtin_unreachable();
+				}
+				insertByte(JUMP | (0b11 << 6));
+				u8 *if_done_cache = offset;
+				for (usize i = 0; i < 4; ++i) {
+					insertByte(0);
+				}
+				u32 else_start = offset - start;
+				u32 nbytes = 0b11;
+				u32 pos = 0;
+				do {
+					ifstack[ifstack_pos-1].cache[pos] = else_start >> (8 * nbytes);
+					pos += 1;
+				} while (nbytes --> 0);
+				ifstack[ifstack_pos-1].cache = if_done_cache;
+				break;
+			}
+			case TOKEN_DONE: {
+				if (ifstack_pos == 0) {
+					io_write(getStdErr(), str("Done without an if found. Exiting.\n"));
+					die(2);
+					__builtin_unreachable();
+				}
+				u32 jump = offset - start;
+				u32 nbytes = 0b11;
+				u32 pos = 0;
+				do {
+					ifstack[ifstack_pos-1].cache[pos] = jump >> (8 * nbytes);
+					pos += 1;
+				} while (nbytes --> 0);
+				ifstack_pos -= 1;
 				break;
 			}
 			default: {
@@ -80,6 +130,11 @@ Bytecode *Compiler_compile(Lex *l) {
 	}
 
 end:
+	if (ifstack_pos != 0) {
+		io_write(getStdErr(), str("Non terminated ifs not found. Exiting.\n"));
+		die(2);
+		__builtin_unreachable();
+	}
 	insertByte(0);
 	return (Bytecode *)start;
 }
